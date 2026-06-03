@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Thermal Bond - Map Editor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #1a1a2e; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; gap: 10px; min-height: 100vh; }
+        h1 { color: #ffeb3b; font-size: 20px; margin-bottom: 5px; }
+
+        /* TILE TOOLBAR (top) */
+        #toolbar { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 1000px; }
+        .tile-btn { padding: 6px 10px; cursor: pointer; border: 2px solid #555; color: white; border-radius: 4px; font-size: 11px; font-weight: bold; transition: 0.15s; user-select: none; }
+        .tile-btn:hover { filter: brightness(1.3); }
+        .tile-btn.active { border-color: #fff; box-shadow: 0 0 8px #fff; }
+        .t0 { background: #111; color: #888; }
+        .t1 { background: #444; }
+        .t2 { background: #8b1a00; border-color: #ff4d2e; }
+        .t3 { background: rgba(46,184,255,0.5); border-color: #2eb8ff; }
+        .t4 { background: #ff3333; }
+        .t5 { background: #00ffaa; color: #000; }
+        .t6 { background: #ff5500; }
+        .t7 { background: #88ccff; color: #000; }
+        .t8 { background: #777; border-color: #ffff00; }
+        .tA { background: #ffaa00; color: #000; border-radius: 8px; }
+        .ta { background: #555; border-color: #ffaa00; }
+        .tB { background: #00ffcc; color: #000; border-radius: 8px; }
+        .tb { background: #555; border-color: #00ffcc; }
+        .tC { background: #b200ff; border-radius: 8px; }
+        .tU { background: #556; }
+        .tD { background: #556; }
+        .tL { background: #556; }
+        .tR { background: #556; }
+        .tu, .td, .tl, .tr { background: #334; border: 1px dashed #aaa; color: #aaa; border-radius: 4px; }
+        .tO { background: #6b4d32; border-color: #4a3422; }
+        .tp { background: #ff4d2e; color: #fff; border-radius: 50%; }
+        .tc { background: #2eb8ff; color: #fff; border-radius: 50%; }
+        .tE { background: #9900ff; border: 2px solid #ff00ff; color: #fff; font-weight: bold; }
+        .tJ { background: #9900ff; border: 2px dashed #ff00ff; color: #fff; font-weight: bold; }
+
+        /* MAIN LAYOUT */
+        #main-layout { display: flex; gap: 10px; align-items: flex-start; }
+
+        /* DRAW TOOL SIDEBAR (left) */
+        #draw-tools { display: flex; flex-direction: column; gap: 6px; width: 70px; background: #16213e; border: 1px solid #333; border-radius: 8px; padding: 10px 6px; }
+        #draw-tools h3 { font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .draw-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; background: #252545; border: 2px solid #444; border-radius: 6px; cursor: pointer; transition: 0.15s; font-size: 10px; color: #ccc; user-select: none; }
+        .draw-btn:hover { background: #333366; }
+        .draw-btn.active { border-color: #ffeb3b; background: #333355; color: #ffeb3b; box-shadow: 0 0 8px rgba(255,235,59,0.4); }
+        .draw-btn svg { display: block; }
+        .separator { border-top: 1px solid #444; margin: 4px 0; }
+
+        /* GRID */
+        #grid-wrap { position: relative; }
+        #grid { display: grid; grid-template-columns: repeat(30, 20px); grid-template-rows: repeat(40, 20px); gap: 1px; background: #333; border: 2px solid #555; padding: 1px; cursor: crosshair; }
+        .cell { width: 20px; height: 20px; background: #111; user-select: none; position: relative; display: flex; align-items: center; justify-content: center; }
+        .cell-label { font-size: 8px; font-weight: bold; color: rgba(255,255,255,0.75); pointer-events: none; line-height: 1; text-shadow: 0 0 2px #000; }
+        /* preview overlay */
+        #preview-canvas { position: absolute; top: 1px; left: 1px; pointer-events: none; }
+
+        /* OUTPUT PANEL */
+        #output-area { display: flex; flex-direction: column; gap: 8px; width: 300px; }
+        textarea { width: 100%; height: 380px; background: #0a0a0f; color: #0f0; font-family: Consolas, monospace; font-size: 11px; padding: 10px; border: 2px solid #444; border-radius: 5px; resize: none; }
+        .action-btn { padding: 10px; cursor: pointer; border: 2px solid; color: white; border-radius: 5px; font-weight: bold; font-size: 13px; transition: 0.15s; }
+        .action-btn:hover { filter: brightness(1.2); }
+        .instructions { background: #1a2a1a; padding: 12px; border-radius: 5px; font-size: 11px; line-height: 1.6; color: #aaa; }
+        .instructions strong { color: #ffeb3b; }
+    </style>
+</head>
+<body>
+    <h1>🛠️ 맵 에디터 (Map Editor)</h1>
+
+    <!-- TILE PALETTE -->
+    <div id="toolbar">
+        <div class="tile-btn active t1" data-val="1">일반 벽(1)</div>
+        <div class="tile-btn t2" data-val="2">파이로 벽(2)</div>
+        <div class="tile-btn t3" data-val="3">크라이오 벽(3)</div>
+        <div class="tile-btn t4" data-val="4">가시(4)</div>
+        <div class="tile-btn t5" data-val="5">출구(5)</div>
+        <div class="tile-btn t6" data-val="6">용암(6)</div>
+        <div class="tile-btn t7" data-val="7">얼음(7)</div>
+        <div class="tile-btn t8" data-val="8">기본 문(8)</div>
+        <div class="tile-btn tA" data-val="A">스위치A</div>
+        <div class="tile-btn ta" data-val="a">문A</div>
+        <div class="tile-btn tB" data-val="B">스위치B</div>
+        <div class="tile-btn tb" data-val="b">문B</div>
+        <div class="tile-btn tC" data-val="C">스위치C</div>
+        <div class="tile-btn tU" data-val="U">블럭▲</div>
+        <div class="tile-btn tD" data-val="D">블럭▼</div>
+        <div class="tile-btn tL" data-val="L">블럭◀</div>
+        <div class="tile-btn tR" data-val="R">블럭▶</div>
+        <div class="tile-btn tu" data-val="u">목적지▲(u)</div>
+        <div class="tile-btn td" data-val="d">목적지▼(d)</div>
+        <div class="tile-btn tl" data-val="l">목적지◀(l)</div>
+        <div class="tile-btn tr" data-val="r">목적지▶(r)</div>
+        <div class="tile-btn tp" data-val="p">빨강스폰(p)</div>
+        <div class="tile-btn tc" data-val="c">파랑스폰(c)</div>
+        <div class="tile-btn tE" data-val="E">적(정지)E</div>
+        <div class="tile-btn tJ" data-val="J">적(점프)J</div>
+        <div class="tile-btn tO" data-val="O">바위O</div>
+        <div class="tile-btn t0" data-val="0">지우개</div>
+    </div>
+
+    <div id="main-layout">
+
+        <!-- DRAW TOOL SIDEBAR -->
+        <div id="draw-tools">
+            <h3>도구</h3>
+
+            <!-- 점 (Pencil) -->
+            <div class="draw-btn active" id="tool-pencil" data-tool="pencil" title="점 찍기 (드래그 가능)">
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                    <rect x="4" y="4" width="4" height="4" fill="#ffeb3b"/>
+                    <rect x="10" y="10" width="4" height="4" fill="#888"/>
+                    <rect x="16" y="16" width="4" height="4" fill="#888"/>
+                    <rect x="22" y="22" width="4" height="4" fill="#888"/>
+                </svg>
+                점 / 펜
+            </div>
+
+            <!-- 선 (Line) -->
+            <div class="draw-btn" id="tool-line" data-tool="line" title="직선 긋기">
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                    <line x1="4" y1="24" x2="24" y2="4" stroke="#ccc" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                직선
+            </div>
+
+            <!-- 빈 사각형 (Rect outline) -->
+            <div class="draw-btn" id="tool-rect" data-tool="rect" title="빈 사각형 테두리">
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                    <rect x="4" y="6" width="20" height="16" fill="none" stroke="#ccc" stroke-width="2.5"/>
+                </svg>
+                빈 사각형
+            </div>
+
+            <!-- 채운 사각형 (Fill rect) -->
+            <div class="draw-btn" id="tool-fill-rect" data-tool="fill-rect" title="채운 사각형">
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                    <rect x="4" y="6" width="20" height="16" fill="#ccc"/>
+                </svg>
+                채운 사각형
+            </div>
+
+            <div class="separator"></div>
+
+            <!-- 지우개 -->
+            <div class="draw-btn" id="tool-eraser" data-tool="eraser" title="지우개">
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                    <rect x="6" y="10" width="16" height="10" rx="2" fill="#e44" />
+                    <line x1="6" y1="20" x2="22" y2="20" stroke="#fff" stroke-width="1.5"/>
+                </svg>
+                지우개
+            </div>
+
+            <!-- 버킷 (Flood fill) -->
+            <div class="draw-btn" id="tool-bucket" data-tool="bucket" title="영역 채우기">
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                    <path d="M8 20 L8 6 L16 2 L16 12 Z" fill="#aaa"/>
+                    <ellipse cx="19" cy="21" rx="6" ry="6" fill="#4af"/>
+                    <ellipse cx="19" cy="21" rx="3" ry="3" fill="#fff" opacity="0.4"/>
+                </svg>
+                버킷
+            </div>
+        </div>
+
+        <!-- GRID -->
+        <div id="grid-wrap">
+            <div id="grid" ondragstart="return false;" ondrop="return false;"></div>
+            <canvas id="preview-canvas"></canvas>
+        </div>
+
+        <!-- OUTPUT PANEL -->
+        <div id="output-area">
+            <div style="display: flex; gap: 8px;">
+                <button class="action-btn" id="btn-export" style="background:#0078d7; border-color:#005a9e; flex: 1;">💾 코드 내보내기</button>
+                <button class="action-btn" id="btn-load" style="background:#4CAF50; border-color:#388E3C; flex: 1;">📂 코드 불러오기</button>
+            </div>
+            <textarea id="output" placeholder="1. 왼쪽 도구/타일 선택 후 그리드에 그리세요.&#10;2. [코드 내보내기] 클릭&#10;3. 복사 후 game.js의 levelMap에 붙여넣기!&#10;&#10;* 맵을 불러오려면 여기에 코드를 넣고 [코드 불러오기]를 누르세요."></textarea>
+            <button class="action-btn" id="btn-clear" style="background:#a80000; border-color:#7a0000;">🗑️ 전체 지우기</button>
+            <div class="instructions">
+                <strong>그리기 도구:</strong><br>
+                🔹 <b>점/펜</b>: 클릭·드래그로 하나씩<br>
+                🔹 <b>직선</b>: 시작점→끝점 드래그<br>
+                🔹 <b>빈 사각형</b>: 테두리만 그리기<br>
+                🔹 <b>채운 사각형</b>: 내부 전체 채우기<br>
+                🔹 <b>지우개</b>: 선택 시 타일=지우개 모드<br>
+                🔹 <b>버킷</b>: 같은 타일 영역 전부 채우기<br><br>
+                <strong>특수 타일:</strong><br>
+                A스위치→a문, B스위치→b문 연결<br>
+                C스위치→방향블럭(U/D/L/R) 이동<br>
+                방향블럭 도착지(u/d/l/r) 지정 가능<br>
+                바위(O)는 밀 수 있고 스위치 누름
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const COLS = 30, ROWS = 40;
+        const CELL = 21; // 20px + 1px gap
+        const grid = document.getElementById('grid');
+        const previewCanvas = document.getElementById('preview-canvas');
+        const previewCtx = previewCanvas.getContext('2d');
+
+        let currentVal = '1';
+        let currentTool = 'pencil';
+        let isDrawing = false;
+        let startCell = null; // {r, c} for line/rect tools
+
+        // Init Map Data
+        const mapData = Array(ROWS).fill(null).map(() => Array(COLS).fill('0'));
+
+        // Color map for preview
+        const colorMap = {
+            '0': '#111', '1': '#444', '2': '#8b1a00', '3': 'rgba(46,184,255,0.4)',
+            '4': '#ff3333', '5': '#00ffaa', '6': '#ff5500', '7': '#88ccff',
+            '8': '#777', 'A': '#ffaa00', 'a': '#666', 'B': '#00ffcc',
+            'b': '#666', 'C': '#b200ff', 'U': '#445', 'D': '#445',
+            'L': '#445', 'R': '#445', 'u': '#334', 'd': '#334', 'l': '#334', 'r': '#334', 'O': '#6b4d32',
+            'p': '#ff4d2e', 'c': '#2eb8ff', 'E': '#9900ff', 'J': '#9900ff'
+        };
+
+        // Labels shown in each cell
+        const labelMap = {
+            '0':'','1':'1','2':'2','3':'3','4':'4','5':'5','6':'용암','7':'얼음',
+            '8':'문','A':'스A','a':'aㅂ','B':'스B','b':'bㅂ','C':'스C',
+            'U':'▲','D':'▼','L':'◀','R':'▶',
+            'u':'목▲','d':'목▼','l':'목◀','r':'목▶',
+            'O':'바위','p':'P','c':'C','E':'적E','J':'적J'
+        };
+
+        // Build grid cells
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.style.background = '#111';
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                const lbl = document.createElement('span');
+                lbl.className = 'cell-label';
+                cell.appendChild(lbl);
+                grid.appendChild(cell);
+            }
+        }
+
+        // Setup preview canvas size
+        function resizePreview() {
+            const gRect = grid.getBoundingClientRect();
+            previewCanvas.width = gRect.width;
+            previewCanvas.height = gRect.height;
+        }
+        setTimeout(resizePreview, 100);
+
+        // Get cell element at (r, c)
+        function getCell(r, c) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+            return grid.children[r * COLS + c];
+        }
+
+        function applyCell(r, c, val) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+            const v = (currentTool === 'eraser') ? '0' : val;
+            mapData[r][c] = v;
+            const cell = getCell(r, c);
+            if (cell) {
+                cell.style.background = colorMap[v] || '#111';
+                const lbl = cell.querySelector('.cell-label');
+                if (lbl) lbl.textContent = (labelMap[v] !== undefined) ? labelMap[v] : v;
+            }
+        }
+
+        // Bresenham line cells
+        function lineCells(r0, c0, r1, c1) {
+            let cells = [];
+            let dr = Math.abs(r1 - r0), dc = Math.abs(c1 - c0);
+            let sr = r0 < r1 ? 1 : -1, sc = c0 < c1 ? 1 : -1;
+            let err = dr - dc;
+            while (true) {
+                cells.push({r: r0, c: c0});
+                if (r0 === r1 && c0 === c1) break;
+                let e2 = 2 * err;
+                if (e2 > -dc) { err -= dc; r0 += sr; }
+                if (e2 < dr) { err += dr; c0 += sc; }
+            }
+            return cells;
+        }
+
+        // Rect outline/fill cells
+        function rectCells(r0, c0, r1, c1, filled) {
+            let cells = [];
+            let minR = Math.min(r0, r1), maxR = Math.max(r0, r1);
+            let minC = Math.min(c0, c1), maxC = Math.max(c0, c1);
+            for (let r = minR; r <= maxR; r++) {
+                for (let c = minC; c <= maxC; c++) {
+                    if (filled || r === minR || r === maxR || c === minC || c === maxC) {
+                        cells.push({r, c});
+                    }
+                }
+            }
+            return cells;
+        }
+
+        // Draw preview on canvas
+        function drawPreview(cells, val) {
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            const color = colorMap[val] || '#fff';
+            previewCtx.globalAlpha = 0.65;
+            previewCtx.fillStyle = color;
+            cells.forEach(({r, c}) => {
+                previewCtx.fillRect(c * CELL, r * CELL, 20, 20);
+            });
+            previewCtx.globalAlpha = 1;
+        }
+
+        function clearPreview() {
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        }
+
+        // Flood fill (BFS)
+        function floodFill(r, c, targetVal, fillVal) {
+            if (targetVal === fillVal) return;
+            const queue = [{r, c}];
+            const visited = new Set();
+            while (queue.length) {
+                const {r: cr, c: cc} = queue.shift();
+                if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
+                const key = cr * COLS + cc;
+                if (visited.has(key)) continue;
+                if (mapData[cr][cc] !== targetVal) continue;
+                visited.add(key);
+                mapData[cr][cc] = fillVal;
+                const cell = getCell(cr, cc);
+                if (cell) cell.style.background = colorMap[fillVal] || '#111';
+                queue.push({r: cr-1, c: cc}, {r: cr+1, c: cc}, {r: cr, c: cc-1}, {r: cr, c: cc+1});
+            }
+        }
+
+        function getCellFromEvent(e) {
+            const target = e.target.closest('.cell');
+            if (!target) return null;
+            return { r: parseInt(target.dataset.r), c: parseInt(target.dataset.c) };
+        }
+
+        // Mouse events on grid
+        grid.addEventListener('mousedown', (e) => {
+            const pos = getCellFromEvent(e);
+            if (!pos) return;
+            isDrawing = true;
+            startCell = pos;
+
+            if (currentTool === 'pencil' || currentTool === 'eraser') {
+                applyCell(pos.r, pos.c, currentVal);
+            } else if (currentTool === 'bucket') {
+                const target = mapData[pos.r][pos.c];
+                const fill = currentVal;
+                floodFill(pos.r, pos.c, target, fill);
+            }
+        });
+
+        grid.addEventListener('mousemove', (e) => {
+            const pos = getCellFromEvent(e);
+            if (!pos) return;
+
+            if (currentTool === 'pencil' || currentTool === 'eraser') {
+                if (isDrawing) applyCell(pos.r, pos.c, currentVal);
+            } else if ((currentTool === 'line' || currentTool === 'rect' || currentTool === 'fill-rect') && isDrawing && startCell) {
+                let cells = [];
+                if (currentTool === 'line') cells = lineCells(startCell.r, startCell.c, pos.r, pos.c);
+                else if (currentTool === 'rect') cells = rectCells(startCell.r, startCell.c, pos.r, pos.c, false);
+                else cells = rectCells(startCell.r, startCell.c, pos.r, pos.c, true);
+                drawPreview(cells, currentVal);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+            const pos = getCellFromEvent(e);
+
+            if ((currentTool === 'line' || currentTool === 'rect' || currentTool === 'fill-rect') && startCell && pos) {
+                let cells = [];
+                if (currentTool === 'line') cells = lineCells(startCell.r, startCell.c, pos.r, pos.c);
+                else if (currentTool === 'rect') cells = rectCells(startCell.r, startCell.c, pos.r, pos.c, false);
+                else cells = rectCells(startCell.r, startCell.c, pos.r, pos.c, true);
+                cells.forEach(({r, c}) => applyCell(r, c, currentVal));
+                clearPreview();
+            }
+
+            isDrawing = false;
+            startCell = null;
+        });
+
+        // Tile toolbar
+        document.querySelectorAll('#toolbar .tile-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#toolbar .tile-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentVal = btn.dataset.val;
+                // Auto-switch to pencil if eraser was active
+                if (currentTool === 'eraser') {
+                    setTool('pencil');
+                }
+            });
+        });
+
+        // Draw tool sidebar
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.draw-btn').forEach(b => b.classList.remove('active'));
+            const el = document.querySelector(`[data-tool="${tool}"]`);
+            if (el) el.classList.add('active');
+        }
+        document.querySelectorAll('.draw-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTool(btn.dataset.tool));
+        });
+
+        // Export
+        document.getElementById('btn-export').addEventListener('click', () => {
+            let out = 'const levelMap = [\n';
+            for (let r = 0; r < ROWS; r++) {
+                out += '    "' + mapData[r].join('') + '"';
+                if (r < ROWS - 1) out += ',';
+                out += '\n';
+            }
+            out += '];';
+            const ta = document.getElementById('output');
+            ta.value = out;
+            ta.select();
+            ta.setSelectionRange(0, 99999);
+        });
+
+        // Load
+        document.getElementById('btn-load').addEventListener('click', () => {
+            const input = document.getElementById('output').value;
+            try {
+                const match = input.match(/\[([\s\S]*)\]/);
+                if (match) {
+                    const arr = eval('[' + match[1] + ']');
+                    if (arr.length === ROWS && arr[0].length === COLS) {
+                        for (let r = 0; r < ROWS; r++) {
+                            for (let c = 0; c < COLS; c++) {
+                                let val = arr[r][c];
+                                applyCell(r, c, val);
+                            }
+                        }
+                        alert('맵을 성공적으로 불러왔습니다!');
+                    } else {
+                        alert('맵 크기가 맞지 않습니다 (가로30x세로40).');
+                    }
+                } else {
+                    alert('올바른 맵 코드가 아닙니다.');
+                }
+            } catch(e) {
+                alert('맵을 불러오는 중 오류가 발생했습니다: ' + e.message);
+            }
+        });
+
+        // Clear
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if (confirm('맵을 초기화하시겠습니까?')) {
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        mapData[r][c] = '0';
+                        const cell = getCell(r, c);
+                        if (cell) cell.style.background = '#111';
+                    }
+                }
+                document.getElementById('output').value = '';
+            }
+        });
+    </script>
+</body>
+</html>

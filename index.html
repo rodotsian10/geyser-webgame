@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thermal Bond – Co-op Puzzle Platformer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Title Screen -->
+  <div id="title-screen" class="screen active">
+    <div class="title-bg"></div>
+    <div class="title-content">
+      <div class="title-logo">
+        <span class="logo-fire">GEY</span>
+        <span class="logo-ice">SER</span>
+      </div>
+      <div class="title-sub">2-Player Co-op Puzzle Platformer</div>
+      <div class="char-preview">
+        <div class="preview-card red-card">
+          <div class="preview-icon pyro-icon"></div>
+          <div class="preview-name">🔴 PYRO</div>
+          <div class="preview-keys">
+            <span>Move: A / D</span>
+            <span>Jump: W / Space</span>
+            <span>Wall Cling: F (Hold)</span>
+          </div>
+        </div>
+        <div class="preview-vs">VS</div>
+        <div class="preview-card blue-card">
+          <div class="preview-icon cryo-icon"></div>
+          <div class="preview-name">🔵 CRYO</div>
+          <div class="preview-keys">
+            <span>Move: ← / →</span>
+            <span>Jump: ↑</span>
+            <span>Phase Dash: double click</span>
+          </div>
+        </div>
+      </div>
+      <div class="combo-hint">
+        <span class="combo-icon">⚡</span>
+        합동기: PYRO가 벽에 붙은 채 CRYO가 위로 대시 → <strong>간헐천 발사!</strong>
+      </div>
+      <div class="title-buttons" style="display: flex; gap: 10px; justify-content: center; flex-direction: column; align-items: center;">
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-start" class="btn-primary">▶ START GAME</button>
+          <button id="btn-load-map" class="btn-primary" style="background: #444; border-color: #777;">🛠️ 맵 불러오기</button>
+        </div>
+        <div id="custom-map-ui" style="display: none; margin-top: 15px; width: 100%; max-width: 400px; text-align: center;">
+          <textarea id="custom-map-input" placeholder="에디터에서 복사한 코드(const levelMap = [ ... ])를 여기에 붙여넣으세요!" style="width: 100%; height: 80px; background: #0a0a0f; color: #0f0; padding: 10px; border: 1px solid #555; border-radius: 5px; font-family: monospace; resize: none;"></textarea>
+          <button id="btn-start-custom" class="btn-primary" style="margin-top: 10px; font-size: 14px; padding: 10px 20px; background: #0078d7; border-color: #005a9e; width: 100%;">이 맵으로 플레이!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage Select Overlay -->
+  <div id="stage-select-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(6px);">
+    <div style="background:linear-gradient(135deg,#0d0d1a 0%,#1a0a2e 100%); border:2px solid #4a2fa0; border-radius:20px; padding:40px; max-width:500px; width:90%; text-align:center; box-shadow:0 0 60px rgba(100,50,255,0.4);">
+      <div style="font-family:'Orbitron',sans-serif; font-size:28px; color:#c084fc; margin-bottom:8px; letter-spacing:4px;">SELECT STAGE</div>
+      <div style="color:#888; font-size:14px; margin-bottom:30px; font-family:'Rajdhani',sans-serif;">스테이지를 선택하세요</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+        <button class="stage-btn" id="stage-btn-1" onclick="selectStage(0)">
+          <div class="stage-num">01</div>
+          <div class="stage-name">Tutorial I</div>
+          <div class="stage-desc">기본 조작 익히기</div>
+        </button>
+        <button class="stage-btn" id="stage-btn-2" onclick="selectStage(1)">
+          <div class="stage-num">02</div>
+          <div class="stage-name">Tutorial II</div>
+          <div class="stage-desc">협력 퍼즐 도전</div>
+        </button>
+        <button class="stage-btn" id="stage-btn-3" onclick="selectStage(2)">
+          <div class="stage-num">03</div>
+          <div class="stage-name">Tutorial III</div>
+          <div class="stage-desc">고급 메카닉</div>
+        </button>
+        <button class="stage-btn" id="stage-btn-4" onclick="selectStage(3)">
+          <div class="stage-num">04</div>
+          <div class="stage-name">Main Stage</div>
+          <div class="stage-desc">최종 관문</div>
+        </button>
+      </div>
+      <button onclick="closeStageSelect()" style="background:transparent; border:1px solid #555; color:#888; padding:10px 30px; border-radius:8px; cursor:pointer; font-family:'Rajdhani',sans-serif; font-size:14px; transition:all 0.2s;" onmouseover="this.style.borderColor='#c084fc';this.style.color='#c084fc'" onmouseout="this.style.borderColor='#555';this.style.color='#888'">✕ 취소</button>
+    </div>
+  </div>
+
+  <div id="game-screen" class="screen">
+    <!-- Top HUD -->
+    <div id="hud-top">
+      <div class="hud-center">
+        <div id="stage-label">STAGE 1</div>
+        <div id="objective-text">적을 처치하고 협력하여 탈출하세요!</div>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:6px;">
+          <button id="btn-ingame-restart" onclick="startGame()" style="padding:5px 14px;background:#c62828;border:2px solid #ff5252;color:#fff;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;">↩ 재시작</button>
+          <button id="btn-ingame-menu" onclick="goToMenu()" style="padding:5px 14px;background:#1a237e;border:2px solid #5c6bc0;color:#fff;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;">🏠 메뉴</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Left HUD (Pyro) -->
+    <div id="hud-left" class="side-hud pyro-hud">
+      <div class="hud-name">🔴 PYRO</div>
+      <div class="hud-controls">
+        ⌨️ 조작키<br>
+        이동: <span class="keycap">A</span> <span class="keycap">D</span><br>
+        점프: <span class="keycap">W</span><br>
+        사격: <span class="keycap">R</span><br>
+        벽타기: <span class="keycap">F</span>
+      </div>
+      <div class="hud-state" id="pyro-state">IDLE</div>
+      <div class="hud-ammo">탄창: <span id="pyro-ammo">3</span>/3</div>
+      <div class="hud-skill">
+        <span>Wall Cling</span>
+        <div class="skill-bar-bg"><div id="pyro-skill-bar" class="skill-bar red-skill"></div></div>
+      </div>
+    </div>
+
+    <!-- Right HUD (Cryo) -->
+    <div id="hud-right" class="side-hud cryo-hud">
+      <div class="hud-name">🔵 CRYO</div>
+      <div class="hud-controls">
+        ⌨️ 조작키<br>
+        이동: <span class="keycap">←</span> <span class="keycap">→</span><br>
+        점프: <span class="keycap">↑</span><br>
+        대시: <span class="keycap">Shift</span>
+      </div>
+      <div class="hud-state" id="cryo-state">IDLE</div>
+      <div class="hud-skill">
+        <span>Phase Dash</span>
+        <div class="skill-bar-bg"><div id="cryo-skill-bar" class="skill-bar blue-skill"></div></div>
+      </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="effect-overlay"></div>
+  </div>
+
+  <!-- Clear Screen -->
+  <div id="clear-screen" class="screen">
+    <div class="clear-content">
+      <div class="clear-title">🎉 STAGE CLEAR! 🎉</div>
+      <div class="clear-sub">두 영웅이 함께 탈출에 성공했습니다!</div>
+      <div class="clear-stats" id="clear-stats"></div>
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px; flex-wrap: wrap;">
+        <button id="btn-next-stage" class="btn-primary" style="background: #0078d7; border-color: #005a9e;">▶ 다음 스테이지</button>
+        <button id="btn-restart" class="btn-primary">🔄 다시 플레이</button>
+        <button id="btn-clear-menu" class="btn-primary" style="background: #1a237e; border-color: #5c6bc0;">🏠 메뉴로</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
